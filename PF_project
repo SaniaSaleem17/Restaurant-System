@@ -1,0 +1,1897 @@
+// FINAL PROJECT
+// 65328
+
+
+#include <iostream>
+#include <string>
+#include <stdlib.h>
+#include <cctype>  //for isdigit function
+using namespace std;
+
+
+//function prototypes
+void initializeSystem();
+void staffMenu();
+void customerMenu();
+void processBill(); 
+void view_order(int table);
+float calculateTotalRevenue();
+void findMostPopularItem();
+void viewMenu();
+void addMenuItem(const string &item, float price, bool isFood);
+void updateMenuItem();
+void deleteMenuItem();
+void addOrder(int table);
+void deleteItemFromOrder(int table);
+void addItemToOrder();
+void viewOrder(int table);
+void viewTableStatus();
+void table_visual(bool tableStatus[], int totalTables);
+void verification();
+void calculateAndPrintBill(int table, float &totalBill, string &orderedItems);
+
+
+
+
+
+//============================================  UTILITY FUNCTIONS  ===============================================//
+
+//cls
+inline void clearScreen()
+{
+    system("cls");
+}
+
+//for press enter to continue
+inline void Enter()
+{
+	cin.ignore();
+	cin.get();
+	clearScreen();
+}
+
+inline void flushInputBuffer() 
+{
+	//ios::end --> location is the number of bytes from the end of the file
+    cin.seekg(0,ios::end);	//seek position/location in a file
+    cin.clear();			//clears its error state (for in case an input fails, its put in error state until cleared)
+}
+
+
+//================================================================================================================//
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////// FANCY PRINT ////////////////////////////////////////////////
+
+//converts the input string to lowercase
+string strLower(string str)
+{
+	string toReturn = "";		//empty string to store result
+	
+	//loop through each character in the string
+	for (int i=0; i < str.length(); i++)
+	{
+		toReturn += tolower(str[i]); //convert each character to lowercase
+	}
+	return toReturn; //returns the new modified LOWERCASE string
+}
+
+
+
+
+//this function returns the ANSI code for a terminal color given its name. e.g if we type in Black it'll return its ANSI
+//code that is 0
+string getTerminalColor(string color)
+{
+	//array with color name and their terminal codes in correspondance
+	string colors[16][2] = 
+	{
+		{"Black", "0"},
+		{"Red", "4"},
+		{"Green", "2"},
+		{"Yellow", "6"},
+		{"Blue", "1"},
+		{"Magenta", "5"},
+		{"Cyan", "3"},
+		{"Light Gray", "7"},
+		{"Dark Gray", "8"},
+		{"Light Red", "C"},
+		{"Light Green", "A"},
+		{"Light Yellow", "E"},
+		{"Light Blue", "9"},
+		{"Light Magenta", "D"},
+		{"Light Cyan", "B"},
+		{"White", "F"}
+	};
+	
+	
+	for (int i=0; i < 16; i++){
+		if (strLower(color) == strLower(colors[i][0]))		//if they match then return the color
+		{
+			return colors[i][1];
+		}
+	}
+	return "0";// if no match found return default color code (black in my case)
+}
+
+
+//i tried to do the same but with different fonts but my terminal doesn't support it >:
+//only italics work
+string getFORMATcode (string format){
+	string formats[8][2] = {
+		{ "Default", "0" },
+		{ "Bold", "1" },
+		{ "Dim", "2" },
+		{ "Italics", "3"},
+		{ "Underlined", "4" },
+		{ "Blink", "5" },
+		{ "Reverse", "7" },
+		{ "Hidden", "8" }
+	};
+	for (int i=0; i < 8; i++){
+		if (strLower(format) == strLower(formats[i][0])){
+			return formats[i][1];
+		}
+	}
+	return "0";
+}
+string getFGcode(string color){
+	string fg_colors[17][2] = {
+		{ "Default", "39" },
+		{ "Black", "30" },
+		{ "Red", "31" },
+		{ "Green", "32" },
+		{ "Yellow", "33" },
+		{ "Blue", "34" },
+		{ "Magenta", "35" },
+		{ "Cyan", "36" },
+		{ "Light Gray", "37" },
+		{ "Dark Gray", "90" },
+		{ "Light Red", "91" },
+		{ "Light Green", "92" },
+		{ "Light Yellow", "93" },
+		{ "Light Blue", "94" },
+		{ "Light Magenta", "95" },
+		{ "Light Cyan", "96" },
+		{ "White", "97" }
+	};
+	for (int i=0; i < 17; i++){
+		if (strLower(color) == strLower(fg_colors[i][0])){
+			return fg_colors[i][1];
+		}
+	}
+	return "39";
+}
+string getBGcode(string color){
+	int code = stoi(getFGcode(color)) + 10;
+	return to_string(code);
+}
+
+string TERMINAL_FG = "white";
+string TERMINAL_BG = "black";
+string DEFAULT_FG = TERMINAL_FG;
+string DEFAULT_BG = TERMINAL_BG;
+
+void restoreDefaultColors () {
+	cout << "\033[" + getFGcode(DEFAULT_FG) + ";" + getBGcode(DEFAULT_BG) + "m";
+}
+void refreshTerminalColor() {
+	string command = "COLOR " + getTerminalColor(TERMINAL_BG) + getTerminalColor(TERMINAL_FG);
+	system(command.c_str());				// system() takes in a cstring and not a stdstring, so .c_str() converts it
+	restoreDefaultColors();
+}
+void setTerminalBG(string color) {
+	TERMINAL_BG = color;
+	refreshTerminalColor();
+}
+void setTerminalFG(string color) {
+	TERMINAL_FG = color;
+	refreshTerminalColor();
+}
+void setDefaultTextFG(string color) {
+	DEFAULT_FG = color;
+	restoreDefaultColors();
+}
+void setDefaultTextBG(string color = TERMINAL_BG) {
+	DEFAULT_BG = color;
+	restoreDefaultColors();
+}
+
+void fancyPrint(string str, string FG = DEFAULT_FG, string BG = DEFAULT_BG, string form = "default") {
+	// "\033[{FORMAT_ATTRIBUTE};{FORGROUND_COLOR};{BACKGROUND_COLOR}m{TEXT}\033[{RESET_FORMATE_ATTRIBUTE}m"
+	string background = getBGcode(BG);
+	string foreground = getFGcode(FG);
+	string format = getFORMATcode(form);
+	string toPrint = "\033[" + format  + ";" + foreground + ";" + background + "m" + str;
+	cout << toPrint << '\n';
+	restoreDefaultColors();
+}
+
+////////////////////////////////////////////////// END FANCY PRINT //////////////////////////////////////////////
+
+
+
+
+
+
+
+// by declaring the FOOD_SIZE and DRINK_SIZE separately we're able to easily change the maximum amount of items we want on our menu
+// this makes our code more efficient and flexible
+
+const int FOOD_SIZE = 7;        // number of food items we can add to the menu
+const int DRINKS_SIZE = 7;      // number of drink items we can add to the menu
+const int MAX_TABLES = 9;       // number of tables available at the restaurant
+
+const int TOTAL_SIZE = FOOD_SIZE  + DRINKS_SIZE;
+
+
+//contains arrays of orders for each table
+int orders[MAX_TABLES][TOTAL_SIZE]; 
+
+
+string foodMenu[FOOD_SIZE];            // array representing the food menu items
+string drinksMenu[DRINKS_SIZE];        // array representing the drink menu items
+
+float bill[MAX_TABLES];                // array to store total bills per table
+bool tableStatus[MAX_TABLES];          // tracks whether a table is occupied or not. if its occupied, then true, otherwise false
+
+
+
+// arrays which initialize the prices for each benu item
+float foodPrices[FOOD_SIZE] = {0.0};   // 8itialize with 0.0 for all food items
+float drinkPrices[DRINKS_SIZE] = {0.0}; // initialize with 0.0 for all drink items
+
+// initialize the system
+// NOTE: void return type means the function doesn't return any value
+void initializeSystem()
+{
+    for (int i = 0; i < MAX_TABLES; i++)
+	{
+        for (int j = 0; j < TOTAL_SIZE; j++)
+		{
+            orders[i][j] = -1;  	// marks the slot as empty
+        }
+        bill[i] = 0.0;				// initializing bill as 0
+        tableStatus[i] = false;		// initializing table status. its false meaning "not occupied"
+    }
+    for (int i = 0; i < FOOD_SIZE; i++)
+	{
+        foodMenu[i] = "";			// initializes food menu with empty values
+    }
+    for (int i = 0; i < DRINKS_SIZE; i++)
+	{
+        drinksMenu[i] = "";  		// initializes drinks menu with empty values
+    }
+}
+
+
+
+
+
+// function to view the menu (for both foods and drinks)
+void viewMenu() {
+    cout << "Menu:" << endl;
+    cout << endl;
+    cout << "Food:" << endl;
+    
+    //looping through the food menu and displaying items that are NOT empty
+    for (int i = 0; i < FOOD_SIZE; i++)
+	{
+        if (!foodMenu[i].empty())
+		{
+            cout << i + 1 << ". " << foodMenu[i] << " - $" << foodPrices[i] << endl;
+        }
+    }
+
+    cout << "\nDrinks:" << endl;
+    
+    //looping through the drinks menu and displaying items that are NOT empty
+    for (int i = 0; i < DRINKS_SIZE; i++) {
+        if (!drinksMenu[i].empty()) {
+            cout << i + 1 << ". " << drinksMenu[i] << " - $" << drinkPrices[i] << endl;
+        }
+    }
+}
+
+// add a menu item to either the food or drinks menu
+void addMenuItem(const string& item, float price, bool isFood)	//const string& is a reference to a constant string, meaning the value of 'item' cant be changed within the function
+// & indicates that the parameter is passed by reference, meaning that the string its been passed with will be worked with
+{
+    if (isFood) 
+	
+	// search for an empty slot in the food menu to add the item into
+	{
+        for (int i = 0; i < FOOD_SIZE; i++)
+		{
+            if (foodMenu[i].empty())		// .empty() is a built in function of the library <string>. it check whether a string is empty or not
+			// if its true, then that means the string has no character (item can be added)
+			// otherwise, if the string contains one or more character then its false
+			{
+                foodMenu[i] = item;				// adds the food item to the menu
+                foodPrices[i] = price;			// sets the price of the item we just added
+                cout << "Food item added to menu: " << item << " at $" << price << endl;
+                return;
+            }
+        }
+        cout << "Food menu is full. Unable to add more items." << endl;		//this will run in case the food menu is full
+    } 
+	else 
+	{
+		// does the same thing as above, but for drinks
+        for (int i = 0; i < DRINKS_SIZE; i++) 
+		{
+            if (drinksMenu[i].empty()) 
+			{
+                drinksMenu[i] = item;
+                drinkPrices[i] = price;
+                cout << "Drink item added to menu: " << item << " at $" << price << endl;
+                return;
+            }
+        }
+        cout << "Drinks menu is full. Unable to add more items." << endl;
+    }
+}
+
+//updates/edits an existing menu item, whether it's a food item or a drink
+void updateMenuItem() 
+{
+    // Check if the food menu is empty
+    bool isFoodMenuEmpty = true;
+    for (int i = 0; i < FOOD_SIZE; i++) {
+        if (!foodMenu[i].empty()) {
+            isFoodMenuEmpty = false;
+            break;
+        }
+    }
+
+    // Check if the drinks menu is empty
+    bool isDrinksMenuEmpty = true;
+    for (int i = 0; i < DRINKS_SIZE; i++) {
+        if (!drinksMenu[i].empty()) {
+            isDrinksMenuEmpty = false;
+            break;
+        }
+    }
+
+    // If both menus are empty, show a message and return
+    if (isFoodMenuEmpty && isDrinksMenuEmpty) {
+        cout << "Both the food and drink menus are empty. No items to edit." << endl;
+        return;
+    }
+
+    // Ask the user whether they want to update a food item or a drink item
+    cout << "=============================================================" << endl;
+    cout << "\nIs the item you want to update a food item or a drink item?" << endl;
+    cout << "1. Food item" << endl;
+    cout << "2. Drink item\n" << endl;
+	cout << "> ";
+	
+    char ch;
+    cin >> ch;
+
+    int index;
+    string newItem;
+    float newPrice;
+	clearScreen();
+	
+    if (ch == '1')  // Food item selected
+    {
+        // If the food menu is empty, show a message and return
+        if (isFoodMenuEmpty) {
+            cout << "The food menu is empty. No food items to update." << endl;
+            return;
+        }
+
+        // Show only the food items before asking for an index
+        cout << "Food Menu:" << endl;
+        for (int i = 0; i < FOOD_SIZE; i++) {
+            if (!foodMenu[i].empty()) {
+                cout << i + 1 << ". " << foodMenu[i] << " - $" << foodPrices[i] << endl;
+            }
+        }
+
+        cout << "\nEnter index of food item you want to update" << endl;
+        cout << "> ";
+        cin >> index;
+		cout << endl;
+		clearScreen();
+		
+        // Validate index for food menu (1 to FOOD_SIZE)
+        if (index >= 1 && index <= FOOD_SIZE) 
+        {
+            index--;  // Adjust to 0-based index
+            if (foodMenu[index].empty()) 
+            {
+                cout << "The food item at index " << (index + 1) << " is empty, there is nothing to update." << endl;
+            }
+            else
+            {
+                cout << "Enter the new food item name: " << endl;
+                cout << "> ";
+                cin.ignore();  // To clear the input buffer before reading a string
+                getline(cin, newItem);
+                cout << "\nEnter the new price for the food item: " << endl;
+                cout << "> ";
+                cin >> newPrice;
+
+                foodMenu[index] = newItem;       // Update the food item with the new name
+                foodPrices[index] = newPrice;    // Update the price of the food item
+                cout << "\nFood item updated: " << newItem << " at $" << newPrice << endl;
+            }
+        }
+        else
+        {
+            cout << "Invalid menu item index." << endl;
+        }
+    }
+    else if (ch == '2')  // Drink item selected
+    {
+        // If the drinks menu is empty, show a message and return
+        if (isDrinksMenuEmpty)
+		{
+            cout << "The drinks menu is empty. No drink items to update." << endl;
+            return;
+        }
+
+        // Show only the drink items before asking for an index
+        cout << "Drink Menu:" << endl;
+        for (int i = 0; i < DRINKS_SIZE; i++) {
+            if (!drinksMenu[i].empty()) {
+                cout << i + 1 << ". " << drinksMenu[i] << " - $" << drinkPrices[i] << endl;
+            }
+        }
+
+        cout << "Enter index of drink item you want to update:";
+        cin >> index;
+        clearScreen();
+
+        // Validate index for drink items (1 to DRINKS_SIZE)
+        if (index >= 1 && index <= DRINKS_SIZE) 
+        {
+            index--;  // Adjust to 0-based index
+
+            if (drinksMenu[index].empty())  // Check if the drink item is empty
+            {
+                cout << "The drink item at index " << (index + 1) << " is empty, there is nothing to update." << endl;
+            }
+            else
+            {
+                cout << "Enter the new drink item name: " << endl;
+                cout << "> ";
+                cin.ignore();  // To clear the input buffer before reading a string
+                getline(cin, newItem);
+                cout << "\nEnter the new price for the drink item: " << endl;
+                cout << "> ";
+                cin >> newPrice;
+
+                drinksMenu[index] = newItem;  // Update the drink item with the new name
+                drinkPrices[index] = newPrice; // Update the price of the drink item
+                cout << "\nDrink item updated: " << newItem << " at $" << newPrice << endl;
+            }
+        }
+        else
+        {
+            cout << "Invalid menu item index." << endl;
+        }
+    }
+    else
+    {
+        cout << "Invalid option entered." << endl;
+    }
+}
+
+
+
+
+
+//function to delete an item from either the food or drinks menu
+void deleteMenuItem()
+{
+    // Check if the food menu is empty
+    bool isFoodMenuEmpty = true;
+    for (int i = 0; i < FOOD_SIZE; i++) {
+        if (!foodMenu[i].empty()) {
+            isFoodMenuEmpty = false;
+            break;
+        }
+    }
+
+    // Check if the drinks menu is empty
+    bool isDrinksMenuEmpty = true;
+    for (int i = 0; i < DRINKS_SIZE; i++) {
+        if (!drinksMenu[i].empty()) {
+            isDrinksMenuEmpty = false;
+            break;
+        }
+    }
+
+    // If both menus are empty, show a message and return
+    if (isFoodMenuEmpty && isDrinksMenuEmpty) {
+        cout << "Both the food and drink menus are empty. No items to delete." << endl;
+        return;
+    }
+
+    cout << "Is the item you want to delete from the menu a food item or a drink item?" << endl;
+    cout << "1. Food item" << endl;
+    cout << "2. Drink item" << endl;
+
+    char ch;
+    cin >> ch;
+
+    int index;
+
+    if (ch == '1')  // Food item selected
+    {
+        // If the food menu is empty, show a message and return
+        if (isFoodMenuEmpty) {
+            cout << "\nThe food menu is empty. No food items to delete." << endl;
+            return;
+        }
+
+        // Show the food menu
+        cout << "Food Menu:" << endl;
+        for (int i = 0; i < FOOD_SIZE; i++) {
+            if (!foodMenu[i].empty()) {
+                cout << i + 1 << ". " << foodMenu[i] << " - $" << foodPrices[i] << endl;
+            }
+        }
+
+        cout << "\nEnter index of food item you want to delete" << endl;
+        cout << "> ";
+        cin >> index;
+
+        // Validate index
+        if (index >= 1 && index <= FOOD_SIZE) 
+        {
+            index--;  // Adjust to 0-based index
+            if (foodMenu[index].empty()) 
+            {
+                cout << "\nThe food item at index " << (index + 1) << " is already empty, there is nothing to delete." << endl;
+            }
+            else
+            {
+                // Remove the food item
+                foodMenu[index] = "";       
+                foodPrices[index] = 0.0;
+
+                // Shift the remaining items down to fill the gap
+                for (int i = index; i < FOOD_SIZE - 1; i++) 
+                {
+                    foodMenu[i] = foodMenu[i + 1];  // Shift food item
+                    foodPrices[i] = foodPrices[i + 1];  // Shift price
+                }
+
+                // Set the last item to default values (or empty)
+                foodMenu[FOOD_SIZE - 1] = "";
+                foodPrices[FOOD_SIZE - 1] = 0.0;
+
+                cout << "Food item deleted and menu reordered." << endl;
+            }
+        }
+        else
+        {
+            cout << "Invalid menu item index." << endl;
+        }
+    }
+    else if (ch == '2')  // Drink item selected
+    {
+        // If the drinks menu is empty, show a message and return
+        if (isDrinksMenuEmpty) {
+            cout << "\nThe drinks menu is empty. No drink items to delete." << endl;
+            return;
+        }
+
+        // Show the drink menu
+        cout << "Drink Menu:" << endl;
+        for (int i = 0; i < DRINKS_SIZE; i++) {
+            if (!drinksMenu[i].empty()) {
+                cout << i + 1 << ". " << drinksMenu[i] << " - $" << drinkPrices[i] << endl;
+            }
+        }
+
+        cout << "\nEnter index of drink item you want to delete " << endl;
+        cout << "> ";
+        cin >> index;
+
+        // Validate index for drink items (1 to DRINKS_SIZE)
+        if (index >= 1 && index <= DRINKS_SIZE) 
+        {
+            index--;  // Adjust to 0-based index
+
+            if (drinksMenu[index].empty())  // Check if the drink item is already empty
+            {
+                cout << "The drink item at index " << (index + 1) << " is already empty, there is nothing to delete." << endl;
+            }
+            else
+            {
+                // Remove the drink item
+                drinksMenu[index] = "";       
+                drinkPrices[index] = 0.0;
+
+                // Shift the remaining items down to fill the gap
+                for (int i = index; i < DRINKS_SIZE - 1; i++) 
+                {
+                    drinksMenu[i] = drinksMenu[i + 1];  // Shift drink item
+                    drinkPrices[i] = drinkPrices[i + 1];  // Shift price
+                }
+
+                // Set the last item to default values (or empty)
+                drinksMenu[DRINKS_SIZE - 1] = "";
+                drinkPrices[DRINKS_SIZE - 1] = 0.0;
+
+                cout << "Drink item deleted and menu reordered." << endl;
+            }
+        }
+        else
+        {
+            cout << "Invalid menu item index." << endl;
+        }
+    }
+    else
+    {
+        cout << "Invalid option entered." << endl;
+    }
+}
+
+
+
+// Add an order to the table
+void addOrder(int table)
+{
+    if (table >= 0 && table < MAX_TABLES)
+    {
+        if (tableStatus[table])            // checks whether the table is occupied or not
+        {
+            cout << "Table is already occupied!\n";
+            return;
+        }
+
+        string item;
+        int itemIndex;
+
+        while (true)
+        {
+            cout << "Would you like to add a food item or a drink item to your order?" << endl;
+            cout << "1. Food item" << endl;
+            cout << "2. Drink item" << endl;
+            cout << "3. Finish" << endl;
+            cout << "Enter choice: ";
+            cin >> item;
+            
+            clearScreen();
+
+            if (item == "3")  // Finish ordering
+            {
+            	clearScreen();
+                cout << "Order has been completed.\n";
+                cout << "Press 'Enter' to continue ... ";
+                Enter();
+                tableStatus[table] = true;        // Mark the table as occupied when the order is completed
+                break;
+            }
+
+            // Validate the input to ensure it’s either 1 or 2 for food or drink
+            if (item == "1") 
+            {
+                // Display the food menu
+                cout << "Food menu:" << endl;
+                for (int i = 0; i < FOOD_SIZE; i++) {
+                    if (!foodMenu[i].empty()) {
+                        cout << (i + 1) << ". " << foodMenu[i] << " - $" << foodPrices[i] << endl;
+                    }
+                }
+
+                cout << "Enter the number of the food item you want to order (or '0' to cancel): ";
+                cin >> itemIndex;
+                cout << endl;
+
+                if (itemIndex == 0)
+                {
+                    //cout << "Exiting food menu." << endl;
+                    clearScreen();
+                    continue;
+                }
+
+                if (itemIndex > 0 && itemIndex <= FOOD_SIZE)
+                {
+                    // Add the food item to the order
+                    bool itemAdded = false;
+                    for (int i = 0; i < TOTAL_SIZE; i++) {
+                        if (orders[table][i] == -1) {  // Find the first empty slot
+                            orders[table][i] = itemIndex;  // Store food item index
+                            cout << "Food item added to order: " << foodMenu[itemIndex - 1] << endl;
+                            cout << "\nPress 'Enter' to continue ... ";
+                            Enter();
+                            cout << endl;
+                            itemAdded = true;
+                            break;
+                        }
+                    }
+
+                    if (!itemAdded) {
+                        cout << "Order limit reached, cannot add more items." << endl;
+                    }
+                }
+                else
+                {
+                    cout << "Invalid food item number." << endl;
+                }
+            }
+            else if (item == "2") 
+            {
+                // Display the drinks menu
+                cout << "Drinks menu:" << endl;
+                for (int i = 0; i < DRINKS_SIZE; i++) {
+                    if (!drinksMenu[i].empty()) {
+                        cout << (i + 1) << ". " << drinksMenu[i] << " - $" << drinkPrices[i] << endl;
+                    }
+                }
+
+                cout << "Enter the number of the drink item you want to order (or '0' to cancel): ";
+                cin >> itemIndex;
+
+                if (itemIndex == 0)
+                {
+                    cout << "Exiting drinks menu." << endl;
+                    continue;
+                }
+
+                if (itemIndex > 0 && itemIndex <= DRINKS_SIZE)
+                {
+                    // Add the drink item to the order
+                    bool itemAdded = false;
+                    for (int i = 0; i < TOTAL_SIZE; i++) {
+                        if (orders[table][i] == -1){  // Find the first empty slot
+                            orders[table][i] = itemIndex + FOOD_SIZE - 1; // Adjusting index for drinks
+                            cout << "Drink item added to order: " << drinksMenu[itemIndex - 1] << endl;
+                            cout << "\nPress 'Enter' to continue ... ";
+                            Enter();
+                            cout << endl;
+                            itemAdded = true;
+                            break;
+                        }
+                    }
+
+                    if (!itemAdded) {
+                        cout << "Order limit reached, cannot add more items." << endl;
+                    }
+                }
+                else
+                {
+                    cout << "Invalid drink item number." << endl;
+                }
+            }
+            else 
+            {
+                cout << "Invalid selection. Please choose either '1' for Food, '2' for Drink, or '3' to finish." << endl;
+            }
+        }
+    } 
+    else 
+    {
+        cout << "Invalid table number." << endl;
+    }
+}
+
+
+
+
+// Function to add an item to an existing order at a specific table
+void addItemToOrder() {
+    int table;
+    cout << "Enter the table number (0 to " << MAX_TABLES - 1 << "): ";
+    cin >> table;
+
+    if (table >= 0 && table < MAX_TABLES) {  // Check if table number is valid
+        if (!tableStatus[table]) {  // Check if the table is not occupied (no orders placed)
+            cout << "This table has not placed any order yet." << endl;
+            return;
+        }
+
+        string itemType;
+        int itemIndex;
+        
+        cout << "Would you like to add a food item or a drink item to your existing order?" << endl;
+        cout << "1. Food item" << endl;
+        cout << "2. Drink item" << endl;
+        cout << "Enter choice (1 for Food, 2 for Drink): ";
+        cin >> itemType;
+
+        if (itemType == "1") {  // Add food item
+            // Display food menu
+            cout << "Food menu:" << endl;
+            for (int i = 0; i < FOOD_SIZE; i++) {
+                if (!foodMenu[i].empty()) {
+                    cout << (i + 1) << ". " << foodMenu[i] << " - $" << foodPrices[i] << endl;
+                }
+            }
+
+            cout << "Enter the number of the food item you want to add to your order (or '0' to cancel): ";
+            cin >> itemIndex;
+
+            if (itemIndex == 0)
+			{
+                cout << "Exiting food menu." << endl;
+                return;
+            }
+
+            if (itemIndex > 0 && itemIndex <= FOOD_SIZE) {
+                // Add the food item to the order
+                bool itemAdded = false;
+                for (int i = 0; i < TOTAL_SIZE; i++)
+				{
+                    if (orders[table][i] == -1) {  // Find the first empty slot
+                        orders[table][i] = itemIndex;  // Add food item to order
+                        cout << "Food item added to order: " << foodMenu[itemIndex - 1] << endl;
+                        itemAdded = true;
+                        break;
+                    }
+                }
+
+                if (!itemAdded)
+				{
+                    cout << "Order limit reached, cannot add more items." << endl;
+                }
+            }
+			
+			else
+			
+			{
+                cout << "Invalid food item number." << endl;
+            }
+
+        } else if (itemType == "2") {  // Add drink item
+            // Display drinks menu
+            cout << "Drinks menu:" << endl;
+            for (int i = 0; i < DRINKS_SIZE; i++) {
+                if (!drinksMenu[i].empty()) {
+                    cout << (i + 1) << ". " << drinksMenu[i] << " - $" << drinkPrices[i] << endl;
+                }
+            }
+
+            cout << "Enter the number of the drink item you want to add to your order (or '0' to cancel): ";
+            cin >> itemIndex;
+
+            if (itemIndex == 0) {
+                cout << "Exiting drinks menu." << endl;
+                return;
+            }
+
+            if (itemIndex > 0 && itemIndex <= DRINKS_SIZE) {
+                // Add the drink item to the order
+                bool itemAdded = false;
+                for (int i = 0; i < TOTAL_SIZE; i++) {
+                    if (orders[table][i] == -1) {  // Find the first empty slot
+                        orders[table][i] = itemIndex + FOOD_SIZE - 1;  // Adjust for drink item index
+                        cout << "Drink item added to order: " << drinksMenu[itemIndex - 1] << endl;
+                        itemAdded = true;
+                        break;
+                    }
+                }
+
+                if (!itemAdded)
+				{
+                    cout << "Order limit reached, cannot add more items." << endl;
+                }
+            } 
+			else
+			{
+                cout << "Invalid drink item number." << endl;
+            }
+        }
+		else
+		{
+            cout << "Invalid selection. Please choose either '1' for Food or '2' for Drink." << endl;
+        }
+
+    }
+	else
+	{
+        cout << "Invalid table number." << endl;
+    }
+}
+
+
+// function to delete an item from an order at a specific table
+void deleteItemFromOrder(int table) {
+    if (table >= 0 && table < MAX_TABLES) {
+        if (!tableStatus[table]) {
+            cout << "No orders placed for this table." << endl;
+            return;
+        }
+
+        // First, display the current order for the table
+        view_order(table);
+
+        int itemToDelete;
+        cout << "Enter the number corresponding to the item to delete: ";
+        cin >> itemToDelete;
+
+        bool itemDeleted = false;
+        int itemCount = 0;
+        
+        // Loop through the items and delete based on the view order's displayed index
+        for (int i = 0; i < TOTAL_SIZE; i++) {
+            if (orders[table][i] != -1) {  // If the item is in the order
+                itemCount++;
+                if (itemCount == itemToDelete) {  // Match the displayed index
+                    orders[table][i] = -1;  // Mark the item as deleted
+                    itemDeleted = true;
+                    cout << "Item successfully removed from the order." << endl;
+                    break;
+                }
+            }
+        }
+
+        if (!itemDeleted) {
+            cout << "Item not found in the current order." << endl;
+        }
+    } else {
+        cout << "Invalid table number." << endl;
+    }
+}
+
+
+
+// Function to view the specific items ordered at a specific table
+void view_order(int table)
+{
+    if (table >= 0 && table < MAX_TABLES) {  // Check if the table number is valid
+        if (tableStatus[table]) {  // Check if the table is occupied
+            int itemCount = 0;  // Variable to count the number of items ordered
+
+            cout << endl;
+
+            // Loop through the orders for the current table
+            cout << "Table " << table << " has ordered the following items:\n";
+            for (int i = 0; i < TOTAL_SIZE; i++) {
+                // Skip invalid items (like -1, 999, etc.)
+                if (orders[table][i] == -1) {
+                    continue;  // This slot is empty or deleted, skip it
+                }
+
+                itemCount++;  // Increment the item count
+
+                // Ensure the item index is within valid bounds
+                int itemIndex = orders[table][i] - 1;  // Get the 0-based index of the item
+                if (itemIndex < FOOD_SIZE) {  // If it's a food item
+                    cout << itemCount << ". " << foodMenu[itemIndex] << endl;
+                } else if (itemIndex < FOOD_SIZE + DRINKS_SIZE) {  // If it's a drink item
+                    cout << itemCount << ". " << drinksMenu[itemIndex - FOOD_SIZE] << endl;
+                } else {
+                    cout << "Invalid item at index " << i << endl;  // For debugging, in case of out-of-range values
+                }
+            }
+
+            // If no items have been ordered
+            if (itemCount == 0) {
+                cout << "No items have been ordered yet." << endl;
+            }
+        }
+        else {
+            cout << "Table " << table << " has not placed any orders yet." << endl;
+        }
+    }
+    else {
+        cout << "Invalid table number." << endl;
+    }
+}
+
+
+
+
+// Function to cancel the entire order for an occupied table with an option to exit
+void cancelOrder() {
+    int table;
+    
+    cout << "Enter the table number for which you want to cancel the order: ";
+    cin >> table;
+
+    // Check if the table number is valid
+    if (table >= 0 && table < MAX_TABLES) {
+        if (tableStatus[table]) {  // If the table is occupied
+            char confirm;
+            cout << "Are you sure you want to cancel the entire order for Table " << table << "? (y/n): ";
+            cin >> confirm;
+
+            if (confirm == 'y' || confirm == 'Y') {
+                // Reset all items in the orders array
+                for (int i = 0; i < TOTAL_SIZE; i++) {
+                    orders[table][i] = -1;  // Mark the order slot as empty
+                }
+
+                // Mark the table as free
+                tableStatus[table] = false;
+
+                cout << "Order for Table " << table << " has been canceled." << endl;
+            } else {
+                cout << "Order cancellation aborted for Table " << table << "." << endl;
+            }
+        } else {
+            cout << "No order found for Table " << table << "." << endl;
+        }
+    } else {
+        cout << "Invalid table number." << endl;
+    }
+}
+
+
+
+
+
+
+
+// function to view the status of a specific table
+void viewTableStatus()
+{
+    // Loop through all tables
+    for (int table = 0; table < MAX_TABLES; table++)
+    {
+        cout << "Table " << table << ": ";  // Table number 
+
+        if (tableStatus[table])  // If the table is occupied
+        {
+            float totalBill = 0;     //i9nitialize the total bill
+            bool firstItem = true;   //flag to check if it's the first item
+
+            // Iterate over the list of items ordered by the specified table
+            for (int i = 0; i < TOTAL_SIZE; i++)
+            {
+                if (orders[table][i] != -1)  // Check if there is an actual order
+                {
+                    int itemIndex = orders[table][i] - 1;  // Adjust for 1-based item IDs
+
+                    if (itemIndex < FOOD_SIZE)  // If the item is food
+                    {
+                        if (!firstItem) cout << ", ";  // Add comma if not the first item
+                        cout << foodMenu[itemIndex];  // Output food item
+                        totalBill += foodPrices[itemIndex];  // Add price to total bill
+                        firstItem = false;  // Mark that at least one item has been added
+                    }
+                    else  // If the item is a drink
+                    {
+                        if (!firstItem) cout << ", ";  // Add comma if not the first item
+                        cout << drinksMenu[itemIndex - FOOD_SIZE];  // Output drink item
+                        totalBill += drinkPrices[itemIndex - FOOD_SIZE];  // Add price to total bill
+                        firstItem = false;  // Mark that at least one item has been added
+                    }
+                }
+            }
+
+            // Output the total bill after the items
+            cout << " . . . . . . . . . . $" << totalBill << endl;
+            bill[table] = totalBill;  // Store the total bill for the table
+        }
+        else  // If the table is empty
+        {
+            cout << "\n";  // Just print the table number, no orders
+        }
+    }
+}
+
+
+// visual representation of tableS
+void table_visual(bool tableStatus[], int totalTables) 
+{
+	// Convert to 0-based index for the tableStatus array
+	cout << "[X] means that the table is occupied" << endl;
+    // display the tables in a grid format (3 tables per row)
+    for (int i = 0; i < totalTables; i++)
+	{
+        if (i % 3 == 0 && i != 0)
+		{
+            cout << endl; // new line after every third table to create rows
+        }
+
+        if (tableStatus[i+1])
+		{
+            cout << "[X] ";  // marking the table with a cross (X) if it's not available
+        }
+		else
+		{
+            cout << "[" << i + 1 << "] ";  // printing the number of the table that is available
+        }
+    }
+
+    cout << endl; // End with a new line for a clean display
+}
+
+
+
+void verification()
+{
+	string username = "staff@123";
+	string password = "password123";
+	string u_username, u_password;			// username and password input by the user
+	
+	cout << "================================================" << endl;
+	cout << "Verify your identity before entering staff mode." << endl;
+	
+	cout << "Enter username: ";
+	cin >> u_username;
+	
+	cout << "Enter password: ";
+	cin >> u_password;
+	
+	// now we'll be checking the possible conditions we have
+	
+	if (username == u_username && password == u_password)
+	{
+		cout << "Login successful !!" << endl;
+		cout << "================================================" << endl;
+		cout << "\n\n";
+		
+		cout << "Press 'Enter' to continue ...";
+		Enter();
+		//call staff menu
+		staffMenu();
+	}
+	
+	else if (username == u_username && password != u_password)
+	{
+		cout << "Incorrect password entered" << endl;
+		cout << "================================================" << endl;
+		cout << "\n\n";
+		
+		cout << "Press 'Enter' to continue ...";
+		Enter();
+	}
+	
+	else if (username != u_username && password == u_password)
+	{
+		cout << "Invalid username" << endl;
+		cout << "================================================" << endl;
+		cout << "\n\n";
+		
+		cout << "Press 'Enter' to continue ...";
+		Enter();
+	}
+	
+	else
+	{
+		cout << "================================================" << endl;
+		cout << "\n\n";
+		
+		cout << "Press 'Enter' to continue ...";
+		Enter();
+	}
+}
+
+// Customer menu
+void customerMenu() {
+	char choice = -1;
+	string customer_opts = R"opts(
+=========================
+
+Customer Mode Menu:
+	
+1. View Menu
+2. Place Order
+3. Add Item to Order
+4. Delete Item from Order
+5. Cancel Order
+6. View Order
+7. Process Bill
+8. Exit
+
+========================
+Enter your choice: 
+)opts";
+	
+	while (choice != 8) {
+		cout << customer_opts;
+		cout << "> ";
+		cin >> choice;
+		cout << endl;
+		cout << "***********************************" << endl;
+
+		clearScreen();
+
+
+		switch (choice) 
+		{
+			case '1':
+				viewMenu();
+				cout << "***********************************" << endl;
+				cout << "Press 'Enter' to continue ...";
+				Enter();
+
+				break;
+
+			case '2': 
+			{
+			    clearScreen();
+			    cout << "***********************************" << endl;
+			    int table;
+			
+			    while (true) {
+			    	table_visual(tableStatus, MAX_TABLES);		// shows a visual representation of the tables
+			        cout << "Enter table number to place an order (1 to " << MAX_TABLES << "): ";
+			        cin >> table;
+			
+			        // Check if the input is a valid number
+			        if (cin.fail()) {
+			        	clearScreen();
+			            cout << "Error: Please enter a valid number." << endl;
+			            cin.clear();  // clear the error flag
+			            // Here, we just leave the input buffer as is, and re-prompt the user.
+			        } 
+					
+					else if (table < 1 || table > MAX_TABLES) 
+					{
+						clearScreen();
+			            cout << "Invalid table number. Please enter a number between 1 and " << MAX_TABLES << "." << endl;
+			        } 
+					
+					else 
+					{
+			            break; // valid input, exit the loop
+			        }
+			
+			        // We need to manually clear the invalid input from the buffer (but not ignore the entire buffer)
+			        cin.sync();  // this will flush the input buffer, but not skip over everything
+			    }
+			    
+			
+			    clearScreen();
+			
+			    addOrder(table);  // calling function to add the order for the selected table
+			
+			    cout << "***********************************" << endl;
+			    cout << "Press 'Enter' to continue ...";
+			    Enter();
+			
+			    break;
+			}
+
+
+			case '3':
+			{
+				clearScreen();
+				addItemToOrder();
+				cout << "***********************************" << endl;
+				cout << "Press 'Enter' to continue ...";
+				Enter();
+				break;
+			}
+
+			case '4':
+			{
+				int table;
+				cout << "Enter table number to delete an item: ";
+				cin >> table;
+				deleteItemFromOrder(table);
+				cout << "***********************************" << endl;
+				cout << "Press 'Enter' to continue ...";
+				Enter();
+				break;
+			}
+
+			case '5':
+			{
+				cancelOrder();
+				cout << "***********************************" << endl;
+				cout << "Press 'Enter' to continue ...";
+				Enter();
+				break;
+			}
+
+			case '6':
+			{
+				int table;
+				cout << "Enter table number to view order: ";
+				cin >> table;
+				view_order(table);
+				cout << "***********************************" << endl;
+				cout << "Press 'Enter' to continue ...";
+				Enter();
+				break;
+			}
+			
+			case '7': {
+				clearScreen();
+				processBill();
+				cout << "***********************************" << endl;
+				cout << "Press 'Enter' to continue ...";
+				Enter();
+				break;
+			}
+			
+			case '8':{
+				cout << "Exiting Customer Mode." << endl;
+				clearScreen();
+				return;  // exit customer mode and return to main menu
+			}
+			
+			default:{
+				clearScreen();
+				cout << "Invalid option! Try again." << endl;
+				flushInputBuffer();
+				break;
+			}
+		}
+	};
+}
+// Main menu
+
+int main() {
+	system("");
+	
+	setTerminalBG("Black");
+	setDefaultTextBG();
+	setDefaultTextFG("light cyan");
+	
+
+    initializeSystem();
+    char modeChoice;
+	
+	while (true)				// this is an infinite loop that will continue running indefinitely until it encounters a break statement or the program is terminated.
+	{    
+		
+	
+		cout << "************************************************************************************************************************************************************************" << endl;
+		string title_img = R"img(
+    		     _.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._
+    		   ,'_.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._._.-._.-._.-._.-._.-._.-._._.-._.-._.-._.-._.-._.-._._.-._.-._.-.`.
+    		  ( (                                                                                                                          ) )
+    		   ) )                                                                                                                        ( (
+    		  ( (           ____  ____  ___  ____   __    __  __  ____    __    _  _  ____    ___  _  _  ___  ____  ____  __  __           ) )
+    		   ) )         (  _ \( ___)/ __)(_  _) /__\  (  )(  )(  _ \  /__\  ( \( )(_  _)  / __)( \/ )/ __)(_  _)( ___)(  \/  )         ( (
+    		  ( (           )   / )__) \__ \  )(  /(__)\  )(__)(  )   / /(__)\  )  (   )(    \__ \ \  / \__ \  )(   )__)  )    (           ) )
+    		   ) )         (_ )_)(____)(___/ (__)(__)(__)(______)(_ )_)(__)(__)(_) _) (__)   (___/ (__) (___/ (__) (____)(_/\/\_)         ( (
+    		  ( (                                                                                                                          ) )
+    		   ) )                                                                                                                        ( (
+    		  ( (_.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.) )        
+    		  `._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-._.-,'
+	                                                                                                     
+ 
+		)img";
+		
+
+		fancyPrint(title_img, "Yellow");
+		string welcome_img = R"img(
+		
+		           _....._                                              (      )                                             .----------.
+		       _.:`.--|--.`:._                                           )   (    (                                          \~~~~~~~~~~/
+		     .:.'\o   |o  /'. '.                                        (          `                                          \/\/\/\/\/
+		    // '.  \o |  / o '.\\                                  .--"""""""""""""-.                                          \/\/\/\/
+		   //'._o'. \ |o/ o_.-'o\\                               (//\\//\\//\\//\\//\//)                                        ~~||~~	
+	 	  || o '-.'. \|/.-' o  O ||                              ~\^^^^^^^^^^^^^^^^^^/~                                         __||__	
+	 	  ||--o--o--> |  < :===  ||                                `================`                                          `------'	
+
+)img";
+
+
+		
+		
+		string goodbye_img = R"img(
+                                                                 
+                                           -*#%%#+:              
+                                       :-=@@+:..:+@#--.              .........................................................................  
+                      --====-        =%%**+.      :+*#@#-          :=*************************************************************************+-. 
+                    :@@*%@%*%@-     :@#               :@@.       -=+=                                                                         :++=
+                    +@+ =@= =@#      #@*=.          :=#@*        *@:     ____  _  _   __   __ _  __ _        _  _  __   _  _         _  _       *@
+                    +@+ =@= =@#       :%@=          #@*.         *@:    (_  _)/ )( \ / _\ (  ( \(  / )      ( \/ )/  \ / )( \       / \/ \      *@
+                    +@+ =@= =@#        @@:          +@+          *@:      )(  ) __ (/    \/    / )  (        )  /(  O )) \/ (       \_/\_/      *@
+                    =@#:+@*:*@*       .@@.          -@#          *@:     (__) \_)(_/\_/\_/\_)__)(__\_)      (__/  \__/ \____/       (_)(_)      *@
+                     =*#%@%#*=        +@@############@@:         *@:                                                                            *@
+                        =@=          .@%:::::::::::::-@%           *****        ...............................................................=%-
+                        +@+          :@#              @@             ***      -@#************************************************************=   
+                      .%@#@%:         %@-            +@+          //          /    
+                      =@+ +@+         :@@=         .*@#          *___________/ 
+             =*:      =@%#%@*          .+@%*-:.::=*@@=                           
+        +*:  :-.  -*- +@*::+@#.      :*%@@@#*####*%@@@%+ 
+        ::.  +#-  .:. +@+. -%@@*:   +@#: @@.      -@# =@%.       
+        +*:  #@=  -*-  =%@%@*.:#@#=%@=  +@+        #@- -@%.      
+        %@-  *%-  +@=    .+@%=. :+%#.  :@@*++++++++#@%  :@%.     
+        --.       :-.       -%@*:    =%@@#----------@@%. :@%:    
+   -+*******************+:    :*@#=+@%=#@=          %@@@= .%@-   
+  *@#===================#@-     .=*+:  @@- +++++++= +@+#@#%@@@-  
+  +@#+++++++++++++++++++%@:           .@@..@%====@@ -@# #@+:.%@. 
+   :#@+===============*@*.            :@@ .@%    @@ .@% :@%+*@%  
+    *@:               =@=             =@*  =@%+*%%-  %@.  -==-   
+    :@%-..         .:+@%.             *@=    -==:    *@-        
+     .+%@@@@@@@@@@@@@#=               %@:            -@+         
+       .%@=  #@=  *@+                 @@             .@#         
+  *@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  
+  #@-                                                        %@  
+  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  
+   ...........................................................  
+		)img";
+		
+		
+		
+		
+		
+		fancyPrint(welcome_img, "Light Yellow");
+	
+		cout << "Welcome to the Restaurant System, choose a mode: "<<endl;
+        cout << "1. Staff Mode" << endl;
+        cout << "2. Customer Mode" << endl;
+        cout << "3. Exit" << "\n";
+        cout << ">  ";
+        cin >> modeChoice;
+        
+        cout << "***********************************\n" << endl;
+
+        switch (modeChoice)
+		{
+            case '1':  	// entering staff Mode
+            {
+            	clearScreen();
+                verification();
+                break;
+			}
+			
+            case '2':		// entering customer Mode
+            {
+            	clearScreen();
+                customerMenu();
+                break;
+			}
+
+            case '3': 	 // terminating the program
+            {
+            	clearScreen();
+                cout << "Exiting System . . ." << endl;
+                fancyPrint(goodbye_img, "yellow");
+                cout << "Thank you for using the Restaurant Management Program" << endl;
+                return 0;  // exit the program
+			}
+            default:  	// invalid mode selection
+            	clearScreen();
+                cout << "Invalid mode has been selected, please choose a mode again: " << endl;
+                cout << "Press 'Enter' to continue ...";
+                Enter();
+                
+                break;
+        }
+    }
+
+    return 0;
+}
+
+
+
+
+
+const int MAX_BILLS = 100;  // Max number of bills to store
+
+//defines a structure BillData which stores information related to a single bill
+//we use dot notation to access a memeber of a structure --> BillData.tableNumber etc
+struct BillData 
+{
+    int tableNumber;						//table number for which the bill is generated
+    string items[TOTAL_SIZE];				//maximum items in the menu
+    
+	//item[] is an array which holds the ordered items - its size is the sum of foods and drinks
+    int itemCount = 0;  					//to keep track of how many items the table ordered
+    float totalBill;						//total price of the bill
+};
+
+BillData bills[MAX_BILLS];  //an array to store bills (max bill was declared 100 earlier, its the max number of bills that can be stored)
+int billCount = 0;  // kused to keep track of how many bills have been saved/stored in bills[] array
+
+
+//we're processing bill for the customer
+//calculates total bills, processes payment, saves the bill for daily summary and marks the table as free once the bill has been paid
+
+
+
+// Function to check if a string is a valid float
+bool isValidFloat(const string &str) {
+    bool hasDot = false;
+    for (char c : str) {
+        if (c == '.') {
+            if (hasDot) return false;  // Only one dot allowed
+            hasDot = true;
+        } else if (!isdigit(c) && c != '-') {
+            return false;  // Invalid character found
+        }
+    }
+    return true;
+}
+
+// Function to convert a string to float
+float stringToFloat(const string& str) {
+    return stof(str);  // Convert string to float
+}
+
+void processPayment(float totalBill) {
+    int payment_mode;
+    cout << "Do you want to pay with cash or card? (Press '1' for cash | '2' for card): ";
+    cin >> payment_mode;
+
+    if (payment_mode == 1) {
+        string moneyInput;
+        while (true) {
+            cout << "\nEnter amount: ";
+            cin >> moneyInput;
+
+            // Validate the input is a valid float
+            if (isValidFloat(moneyInput)) {
+                float money = stringToFloat(moneyInput);
+                if (money <= 0) 
+				{
+					clearScreen();
+                    cout << "Invalid amount. Please enter a positive number.\n";
+                } else 
+				{
+                    if (money == totalBill) 
+					{
+                        cout << "\n$" << totalBill << " successfully paid via cash." << endl;
+                        break;  // Payment is completed
+                    } else if (money > totalBill) 
+					{
+                        cout << "\nAmount of change returned: $" << money - totalBill << endl;
+                        cout << "$" << totalBill << " successfully paid via cash." << endl;
+                        break;  // Payment is completed
+                    } else 
+					{
+						clearScreen();
+                        cout << "\nInsufficient amount. Please enter a larger amount.\n";
+                    }
+                }
+            } else
+			{
+				clearScreen();
+                cout << "Invalid input. Please enter a valid number.\n";
+            }
+        }
+    } else if (payment_mode == 2) {
+        cout << "$" << totalBill << " successfully paid via card." << endl;
+    } else {
+        cout << "Invalid payment mode." << endl;
+    }
+}
+
+// Function to print the ordered items and calculate the total bill
+void calculateAndPrintBill(int table, float &totalBill, string &orderedItems) {
+    int itemIndex;
+    for (int i = 0; i < TOTAL_SIZE; i++) {
+        if (orders[table][i] != -1) {
+            itemIndex = orders[table][i] - 1;
+            if (itemIndex >= 0 && itemIndex < FOOD_SIZE) {
+                cout << foodMenu[itemIndex] << " . . . . . $" << foodPrices[itemIndex] << endl;
+                totalBill += foodPrices[itemIndex];
+                orderedItems += foodMenu[itemIndex] + ", ";
+            } else if (itemIndex >= FOOD_SIZE && itemIndex < TOTAL_SIZE) {
+                cout << drinksMenu[itemIndex - FOOD_SIZE] << " . . . . . $" << drinkPrices[itemIndex - FOOD_SIZE] << endl;
+                totalBill += drinkPrices[itemIndex - FOOD_SIZE];
+                orderedItems += drinksMenu[itemIndex - FOOD_SIZE] + ", ";
+            }
+        }
+    }
+    cout << "Total Bill: $" << totalBill << endl;
+}
+
+// Function to save the bill data
+void saveBill(int table, float totalBill) {
+    if (billCount < MAX_BILLS) {
+        BillData newBill;
+        newBill.tableNumber = table;
+        newBill.totalBill = totalBill;
+        newBill.itemCount = 0;
+
+        for (int i = 0; i < TOTAL_SIZE; i++) {
+            if (orders[table][i] != -1) {
+                int itemIndex = orders[table][i] - 1;
+                if (itemIndex >= 0 && itemIndex < FOOD_SIZE) {
+                    newBill.items[newBill.itemCount++] = foodMenu[itemIndex];
+                } else if (itemIndex >= FOOD_SIZE && itemIndex < TOTAL_SIZE) {
+                    newBill.items[newBill.itemCount++] = drinksMenu[itemIndex - FOOD_SIZE];
+                }
+            }
+        }
+
+        bills[billCount] = newBill;
+        billCount++;
+        cout << "Bill saved for Table " << table << endl;
+    } else {
+        cout << "Bill storage is full!" << endl;
+    }
+}
+
+// Main processBill function
+void processBill()
+{
+    int table;
+    cout << "Enter table number to process bill: ";
+    cin >> table;
+    
+    if (table >= 0 && table < MAX_TABLES) {
+        if (tableStatus[table]) {
+            float totalBill = 0;
+            string orderedItems = "";
+
+            cout << "Bill for Table " << table  << ":" << endl;
+
+            // Calculate the bill
+            calculateAndPrintBill(table, totalBill, orderedItems);
+
+            // Process the payment
+            processPayment(totalBill);
+
+            // Mark the table as free
+            tableStatus[table] = false;
+            cout << "Table is now free." << endl;
+
+            // Save the bill data
+            saveBill(table, totalBill);
+
+            // Clear the orders array for that table after processing the bill
+            for (int i = 0; i < TOTAL_SIZE; i++) {
+                orders[table][i] = -1;  // Reset all order slots to -1 (empty)
+            }
+
+        } else {
+            cout << "No orders to process for this table." << endl;
+        }
+    } else {
+        cout << "Invalid table number." << endl;
+    }
+}
+
+
+
+//displays all saved bills, this is our daily summary
+//table number, ordered items and total bill
+void displayAllBills() {
+    if (billCount == 0) {
+        cout << "No bills to display." << endl;
+        return;
+    }
+
+    // Loop through all stored bills
+    for (int i = 0; i < billCount; i++) {
+        cout << "Table: " << bills[i].tableNumber << endl;
+        cout << "Items: ";
+
+        // Display all ordered items for the bill
+        for (int j = 0; j < bills[i].itemCount; j++) {
+            cout << bills[i].items[j] << ", ";
+        }
+        cout << endl;
+        cout << "Total Bill: $" << bills[i].totalBill << endl;
+        cout << "--------------------------------" << endl;
+    }
+}
+
+
+void findMostPopularItem() {
+    // Create arrays to track the counts for each food and drink item
+    int foodCount[FOOD_SIZE] = {0};
+    int drinkCount[DRINKS_SIZE] = {0};
+
+    // Loop through each bill to count the food and drink items ordered
+    for (int i = 0; i < billCount; i++) {
+        for (int j = 0; j < bills[i].itemCount; j++) {
+            string item = bills[i].items[j];
+
+            // Check for matching food item
+            for (int k = 0; k < FOOD_SIZE; k++) {
+                if (item == foodMenu[k]) {
+                    foodCount[k]++;
+                    break;  // Break once a match is found
+                }
+            }
+
+            // Check for matching drink item
+            for (int k = 0; k < DRINKS_SIZE; k++) {
+                if (item == drinksMenu[k]) {
+                    drinkCount[k]++;
+                    break;  // Break once a match is found
+                }
+            }
+        }
+    }
+
+    // Find the most popular food item
+    int maxFoodIndex = 0;
+    for (int i = 1; i < FOOD_SIZE; i++) {
+        if (foodCount[i] > foodCount[maxFoodIndex]) {
+            maxFoodIndex = i;
+        }
+    }
+
+    // Find the most popular drink item
+    int maxDrinkIndex = 0;
+    for (int i = 1; i < DRINKS_SIZE; i++) {
+        if (drinkCount[i] > drinkCount[maxDrinkIndex]) {
+            maxDrinkIndex = i;
+        }
+    }
+
+    // Output the most popular food and drink items
+    cout << "Most popular food item: " << foodMenu[maxFoodIndex] << " with " << foodCount[maxFoodIndex] << " orders." << endl;
+    cout << "Most popular drink item: " << drinksMenu[maxDrinkIndex] << " with " << drinkCount[maxDrinkIndex] << " orders." << endl;
+}
+
+
+float calculateTotalRevenue() {
+    float totalRevenue = 0.0;
+
+    // Add up the total bill from each saved bill
+    for (int i = 0; i < billCount; i++) {
+        totalRevenue += bills[i].totalBill;
+    }
+
+    // Print the total revenue
+    cout << "Total Revenue: $" << totalRevenue << endl;
+
+    return totalRevenue;
+}
+
+
+
+// Staff menu, return to main menu when exiting
+void staffMenu() {
+    char choice = 0;
+	string staff_mode_options = R"opts(
+========================
+Staff Mode Menu:
+	
+1. Add Food Item
+2. Add Drink Item
+3. View Menu
+4. Edit Menu Item
+5. Delete Menu Item
+6. View Table Status
+7. Reports
+8. Exit 
+
+========================
+)opts";
+	
+	while (choice != '8'){
+		cout << staff_mode_options;
+		cout << "Enter your choice: ";
+		cin >> choice;
+		switch (choice) 
+		{
+			case '1': 
+			{
+				clearScreen();
+				string foodItem;
+				float foodPrice;
+				cout << "Enter food item name: ";
+				cin.ignore();  // we use cin.ignore() to ignore the newline from previous input
+				getline(cin, foodItem);
+				cout << "Enter food item price: ";
+				cin >> foodPrice;
+				addMenuItem(foodItem, foodPrice, true);
+				cout << "\n***********************************" << endl;
+				cout << "Press 'Enter' to continue ...";
+				Enter();
+				break;
+			}
+			
+		case '2':
+			{
+				clearScreen();
+				string drinkItem;
+				float drinkPrice;
+				cout << "Enter drink item name: ";
+				cin.ignore();
+				getline(cin, drinkItem);
+				cout << "Enter drink item price: ";
+				cin >> drinkPrice;
+				addMenuItem(drinkItem, drinkPrice, false);
+				cout << "\n***********************************" << endl;
+				cout << "Press 'Enter' to continue ...";
+				Enter();
+				break;
+			}
+			
+		case '3':
+			clearScreen();
+			viewMenu();
+			cout << "\n***********************************" << endl;
+			cout << "Press 'Enter' to continue ...";
+			Enter(); 
+			
+			break;
+			
+			case '4': 
+			{
+				clearScreen();
+				updateMenuItem();
+				cout << "\n***********************************" << endl;
+				cout << "Press 'Enter' to continue ...";
+				Enter();
+				break;
+			}
+			case '5': 
+			{
+				clearScreen();
+				deleteMenuItem();
+				cout << "\n***********************************" << endl;
+				cout << "Press 'Enter' to continue ...";
+				Enter();
+				break;
+			}
+			case '6': 
+			{
+				clearScreen();
+				viewTableStatus();
+				cout << "\n***********************************" << endl;
+				cout << "Press 'Enter' to continue ...";
+				Enter();
+				break;
+			}
+			case '7': 
+			{
+				clearScreen();
+				char r;
+				cout << "1. View Daily Summary" << endl;
+				cout << "2. View Popular Item" << endl;
+				cout << "3. View Revenue" << endl;
+				cout << "choose a mode: " << endl;
+				cout << "> ";
+				cin >> r;
+				
+				if (r == '1') 
+				{
+					clearScreen();
+					cout << "Displaying Daily Summary: " << endl;
+					displayAllBills();
+					cout << "***********************************\n\n";
+					cout << "Press 'Enter' to continue ...";
+					Enter();
+				} 
+				
+				else if (r == '2') 
+				{
+					clearScreen();
+					cout << "Displaying Popular Item: " << endl;
+					findMostPopularItem();  // Print the popular item
+					cout << "**********************************\n\n";;
+					cout << "Press 'Enter' to continue ...";
+					Enter();
+				} 
+				
+				else if (r == '3')
+				{
+					clearScreen();
+					cout << "Displaying Revenue: " << endl;
+					calculateTotalRevenue();  // Print the revenue
+					cout << "***********************************\n\n";
+					cout << "Press 'Enter' to continue ...";
+					Enter();
+				} 
+				
+				else 
+				{
+					cout << "Invalid mode entered" << endl;
+					clearScreen();
+				}
+				break;
+			}
+			
+			case '8': 
+			{
+				cout << "Exiting staff mode ... " << endl;
+				clearScreen();
+				return;
+			}
+			
+		default:
+			clearScreen();
+			cout << "Invalid option! Try again." << endl;
+			flushInputBuffer();
+		}
+	}
+}
